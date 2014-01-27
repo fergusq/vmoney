@@ -86,7 +86,7 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 				}
 				
 				int perushinta = hinta.get(artikkeli);
-				int nykyinen = perushinta*kerroin(artikkeli);
+				double nykyinen = perushinta*kerroin(artikkeli);
 				
 				if (block.getLine(0).equalsIgnoreCase("[vbuy]") && economy.getBalance(player.getName()) > nykyinen) {
 					player.getInventory().addItem(esine);
@@ -94,9 +94,9 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					
 					lisääKysyntää(artikkeli, 1);
 					
-					int uusiHinta = perushinta*kerroin(artikkeli);
+					double uusiHinta = perushinta*kerroin(artikkeli);
 					block.setLine(2, ""+uusiHinta);
-					block.setLine(3, "§a+" + (uusiHinta/nykyinen*100-100) + "%");
+					block.setLine(3, "§a+" + (uusiHinta/nykyinen*100d-100d) + "%");
 				}
 				else if (block.getLine(0).equalsIgnoreCase("[vsell]") && player.getInventory().contains(esine)) {
 					economy.depositPlayer(player.getName(), nykyinen/4);
@@ -104,9 +104,9 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					
 					lisääTarjontaa(artikkeli, 1);
 					
-					int uusiHinta = perushinta*kerroin(artikkeli);
+					double uusiHinta = perushinta*kerroin(artikkeli);
 					block.setLine(2, ""+uusiHinta);
-					block.setLine(3, "§c-" + (uusiHinta/nykyinen*100-100) + "%");
+					block.setLine(3, "§c-" + (uusiHinta/nykyinen*100d-100d) + "%");
 				}
 				
 				
@@ -143,8 +143,8 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 		}
 	}
 	
-	public int kerroin(String nimi) {
-		return kysyntä(nimi)/tarjonta(nimi);
+	public double kerroin(String nimi) {
+		return (double)kysyntä(nimi)/(double)tarjonta(nimi);
 	}
 	
 	private int kysyntä(String nimi) {
