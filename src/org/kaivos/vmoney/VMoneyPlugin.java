@@ -5,6 +5,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.text.NumberFormat;
 import java.util.HashMap;
 
 import net.milkbowl.vault.economy.Economy;
@@ -14,6 +15,7 @@ import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
@@ -22,9 +24,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public class VMoneyPlugin extends JavaPlugin implements Listener {
 	
-	private HashMap<String, Integer> kysyntä;
-	private HashMap<String, Integer> tarjonta;
-	private HashMap<String, Integer> hinta;
+	private HashMap<String, Double> kysyntä;
+	private HashMap<String, Double> tarjonta;
+	private HashMap<String, Double> hinta;
 	
 	private Economy economy;
 	
@@ -83,39 +85,67 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 				String[] splitattu = artikkeli.split("[:x]");
 				ItemStack esine = new ItemStack(
 						Integer.parseInt(splitattu[0]),
-						Integer.parseInt(splitattu[1]),
-						Short.parseShort(splitattu[2]));
+						Integer.parseInt(splitattu[2]),
+						Short.parseShort(splitattu[1]));
 				
 				if (!hinta.containsKey(artikkeli)) {
+					if (!player.hasPermission("vmoney.createsign")) {
+						player.sendMessage("§f[§bVMoney§f] §eYou lack permission!");
+						return;
+					}
+					double perushinta = Integer.parseInt(block.getLine(2));
+					
+					hinta.put(artikkeli, perushinta);
+					kysyntä.put(artikkeli, 1d);
+					tarjonta.put(artikkeli, 1d);
+					
+					player.sendMessage("§f[§bVMoney§f] §eShop created!");
 					return;
 				}
 				
-				int perushinta = hinta.get(artikkeli);
+				double perushinta = hinta.get(artikkeli);
 				double nykyinen = perushinta*kerroin(artikkeli);
 				
-				if (block.getLine(0).equalsIgnoreCase("[vbuy]") && economy.getBalance(player.getName()) > nykyinen) {
+				NumberFormat nfFormat = NumberFormat.getInstance();
+				nfFormat.setMaximumFractionDigits(3);
+				
+				if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
+					block.setLine(2, ""+nfFormat.format(nykyinen));
+					block.setLine(3, "§" + (nykyinen < perushinta ? "c" : "a") + nfFormat.format(nykyinen/perushinta*100d-100d) + "%");
+					block.update();
+				}
+				else if (block.getLine(0).equalsIgnoreCase("[vbuy]") && economy.getBalance(player.getName()) > nykyinen) {
 					player.getInventory().addItem(esine);
+					player.updateInventory();
 					economy.withdrawPlayer(player.getName(), nykyinen);
 					
-					lisääKysyntää(artikkeli, 1);
+					lisääKysyntää(artikkeli, 10);
 					
 					double uusiHinta = perushinta*kerroin(artikkeli);
-					block.setLine(2, ""+uusiHinta);
-					block.setLine(3, "§a+" + (uusiHinta/nykyinen*100d-100d) + "%");
+					block.setLine(2, ""+nfFormat.format(uusiHinta));
+					block.setLine(3, "§" + (uusiHinta < perushinta ? "c" : "a") + nfFormat.format(uusiHinta/perushinta*100d-100d) + "%");
+					block.update();
 					
-					player.sendMessage("§f[§bVMoney§f] §eItem bought!");
+					player.sendMessage("§f[§bVMoney§f] §eItem bought: " + esine.toString() + " (" + nfFormat.format(nykyinen) +")!");
 				}
-				else if (block.getLine(0).equalsIgnoreCase("[vsell]") && player.getInventory().contains(esine)) {
+				else if (block.getLine(0).equalsIgnoreCase("[vsell]") && player.getInventory().containsAtLeast(esine, esine.getAmount())) {
 					economy.depositPlayer(player.getName(), nykyinen/4);
-					player.getInventory().remove(esine);
+					player.getInventory().removeItem(esine);
+					player.updateInventory();
 					
-					lisääTarjontaa(artikkeli, 1);
+					lisääTarjontaa(artikkeli, 10);
 					
 					double uusiHinta = perushinta*kerroin(artikkeli);
-					block.setLine(2, ""+uusiHinta);
-					block.setLine(3, "§c-" + (uusiHinta/nykyinen*100d-100d) + "%");
+					block.setLine(2, ""+nfFormat.format(uusiHinta));
+					block.setLine(3, "§" + (uusiHinta < perushinta ? "c" : "a") + nfFormat.format(uusiHinta/perushinta*100d-100d) + "%");
+					block.update();
 					
-					player.sendMessage("§f[§bVMoney§f] §eItem sold!");
+					player.sendMessage("§f[§bVMoney§f] §eItem sold: " + esine.toString() + " (" + nfFormat.format(nykyinen/4) +")!");
+				}
+				else {
+					block.setLine(2, ""+nykyinen);
+					block.setLine(3, "§" + (nykyinen < perushinta ? "c" : "a") + nfFormat.format(nykyinen/perushinta*100d-100d) + "%");
+					block.update();
 				}
 				
 				
@@ -145,11 +175,11 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					return;
 				}
 				
-				int perushinta = Integer.parseInt(event.getLine(2));
+				double perushinta = Integer.parseInt(event.getLine(2));
 				
 				hinta.put(artikkeli, perushinta);
-				kysyntä.put(artikkeli, 1);
-				tarjonta.put(artikkeli, 1);
+				kysyntä.put(artikkeli, 1d);
+				tarjonta.put(artikkeli, 1d);
 				
 				event.setLine(3, "§aOK");
 				
@@ -162,25 +192,25 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 		return (double)kysyntä(nimi)/(double)tarjonta(nimi);
 	}
 	
-	private int kysyntä(String nimi) {
-		if (!kysyntä.containsKey(nimi)) kysyntä.put(nimi, 1);
+	private double kysyntä(String nimi) {
+		if (!kysyntä.containsKey(nimi)) kysyntä.put(nimi, 1d);
 		return kysyntä.get(nimi);
 	}
 	
-	private int tarjonta(String nimi) {
-		if (!kysyntä.containsKey(nimi)) kysyntä.put(nimi, 1);
-		return kysyntä.get(nimi);
+	private double tarjonta(String nimi) {
+		if (!tarjonta.containsKey(nimi)) tarjonta.put(nimi, 1d);
+		return tarjonta.get(nimi);
 	}
 	
-	private void lisääKysyntää(String nimi, int määrä) {
-		kysyntä.put(nimi, kysyntä(nimi)+määrä);
+	private void lisääKysyntää(String nimi, double määrä) {
+		kysyntä.put(nimi, (kysyntä(nimi)+kysyntä(nimi)*(määrä/100d)));
 	}
 	
-	private void lisääTarjontaa(String nimi, int määrä) {
-		tarjonta.put(nimi, tarjonta(nimi)+määrä);
+	private void lisääTarjontaa(String nimi, double määrä) {
+		tarjonta.put(nimi, (tarjonta(nimi)+tarjonta(nimi)*(määrä/100d)));
 	}
 	
-	public void tallenna(HashMap<String, Integer> obj,String path)
+	public void tallenna(HashMap<String, Double> obj,String path)
 	{
 		try {
 			ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(path));
@@ -193,15 +223,15 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public HashMap<String, Integer> lataa(String path)
+	public HashMap<String, Double> lataa(String path)
 	{
 		try {
 			ObjectInputStream ois = new ObjectInputStream(new FileInputStream(path));
 			Object result = ois.readObject();
 			ois.close();
-			return (HashMap<String, Integer>) result;
+			return (HashMap<String, Double>) result;
 		} catch (Exception ex) {
-			return new HashMap<String, Integer>();
+			return new HashMap<String, Double>();
 		}
 	}
 	
