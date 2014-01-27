@@ -93,7 +93,7 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 						player.sendMessage("§f[§bVMoney§f] §eYou lack permission!");
 						return;
 					}
-					double perushinta = Integer.parseInt(block.getLine(2));
+					double perushinta = Double.parseDouble(block.getLine(2));
 					
 					hinta.put(artikkeli, perushinta);
 					kysyntä.put(artikkeli, 1d);
