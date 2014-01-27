@@ -14,7 +14,7 @@ import org.bukkit.block.Sign;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.SignChangeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.RegisteredServiceProvider;
@@ -63,18 +63,23 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 	@EventHandler
 	public void kyltti(PlayerInteractEvent event) {
 		Player player = event.getPlayer();
-
+		
 		if (event.getClickedBlock() != null) {
 			if (event.getClickedBlock().getType() == Material.WALL_SIGN
 					|| event.getClickedBlock().getType() == Material.SIGN_POST
 					|| event.getClickedBlock().getType() == Material.SIGN) {
 				Sign block = (Sign) event.getClickedBlock().getState();
 
-				if (!block.getLine(0).equalsIgnoreCase("[vbuy]") && !block.getLine(0).equalsIgnoreCase("[vsell]")) return;
+				if (!block.getLine(0).equalsIgnoreCase("[vbuy]") && !block.getLine(0).equalsIgnoreCase("[vsell]")) {
+					return;
+				}
 				
 				String artikkeli = block.getLine(1);
 				
-				if (!artikkeli.matches("\\d*:(\\d*)?x\\d")) return;
+				if (!artikkeli.matches("\\d*:(\\d*)?x\\d")) {
+					player.sendMessage("§f[§bVMoney§f] §eBad format!");
+					return;
+				}
 				String[] splitattu = artikkeli.split("[:x]");
 				ItemStack esine = new ItemStack(
 						Integer.parseInt(splitattu[0]),
@@ -97,6 +102,8 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					double uusiHinta = perushinta*kerroin(artikkeli);
 					block.setLine(2, ""+uusiHinta);
 					block.setLine(3, "§a+" + (uusiHinta/nykyinen*100d-100d) + "%");
+					
+					player.sendMessage("§f[§bVMoney§f] §eItem bought!");
 				}
 				else if (block.getLine(0).equalsIgnoreCase("[vsell]") && player.getInventory().contains(esine)) {
 					economy.depositPlayer(player.getName(), nykyinen/4);
@@ -107,6 +114,8 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					double uusiHinta = perushinta*kerroin(artikkeli);
 					block.setLine(2, ""+uusiHinta);
 					block.setLine(3, "§c-" + (uusiHinta/nykyinen*100d-100d) + "%");
+					
+					player.sendMessage("§f[§bVMoney§f] §eItem sold!");
 				}
 				
 				
@@ -115,30 +124,36 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 	}
 	
 	@EventHandler
-	public void kyltti(BlockPlaceEvent event) {
+	public void kyltti(SignChangeEvent event) {
 		Player player = event.getPlayer();
 
 		if (event.getBlock() != null) {
 			if (event.getBlock().getType() == Material.WALL_SIGN
 					|| event.getBlock().getType() == Material.SIGN_POST
 					|| event.getBlock().getType() == Material.SIGN) {
-				Sign block = (Sign) event.getBlock().getState();
-
-				if (!block.getLine(0).equalsIgnoreCase("[vbuy]") && !block.getLine(0).equalsIgnoreCase("[vsell]")) return;
+				if (!event.getLine(0).equalsIgnoreCase("[vbuy]") && !event.getLine(0).equalsIgnoreCase("[vsell]")) return;
 				
-				if (player.hasPermission("vmoney.createsign"));
+				if (!player.hasPermission("vmoney.createsign")) {
+					player.sendMessage("§f[§bVMoney§f] §eYou lack permission!");
+					return;
+				}
 				
-				String artikkeli = block.getLine(1);
+				String artikkeli = event.getLine(1);
 				
-				if (!artikkeli.matches("\\d*:(\\d*)?x\\d")) return;
+				if (!artikkeli.matches("\\d*:(\\d*)?x\\d")) {
+					player.sendMessage("§f[§bVMoney§f] §eBad format!");
+					return;
+				}
 				
-				int perushinta = Integer.parseInt(block.getLine(0));
+				int perushinta = Integer.parseInt(event.getLine(2));
 				
 				hinta.put(artikkeli, perushinta);
 				kysyntä.put(artikkeli, 1);
 				tarjonta.put(artikkeli, 1);
 				
-				block.setLine(3, "§aOK");
+				event.setLine(3, "§aOK");
+				
+				player.sendMessage("§f[§bVMoney§f] §eShop created!");
 			}
 		}
 	}
@@ -186,7 +201,6 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 			ois.close();
 			return (HashMap<String, Integer>) result;
 		} catch (Exception ex) {
-			ex.printStackTrace();
 			return new HashMap<String, Integer>();
 		}
 	}
