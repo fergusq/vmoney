@@ -1,3 +1,4 @@
 name: VMoney
 main: org.kaivos.vmoney.VMoneyPlugin
 version: 1.0
+depend: [Vault]
