@@ -70,7 +70,7 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					|| event.getClickedBlock().getType() == Material.SIGN) {
 				Sign block = (Sign) event.getClickedBlock().getState();
 
-				if (!block.getLine(0).equalsIgnoreCase("[vbuy]") || !block.getLine(0).equalsIgnoreCase("[vsell]")) return;
+				if (!block.getLine(0).equalsIgnoreCase("[vbuy]") && !block.getLine(0).equalsIgnoreCase("[vsell]")) return;
 				
 				String artikkeli = block.getLine(1);
 				
@@ -124,7 +124,7 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					|| event.getBlock().getType() == Material.SIGN) {
 				Sign block = (Sign) event.getBlock().getState();
 
-				if (!block.getLine(0).equalsIgnoreCase("[vbuy]") || !block.getLine(0).equalsIgnoreCase("[vsell]")) return;
+				if (!block.getLine(0).equalsIgnoreCase("[vbuy]") && !block.getLine(0).equalsIgnoreCase("[vsell]")) return;
 				
 				if (player.hasPermission("vmoney.createsign"));
 				
