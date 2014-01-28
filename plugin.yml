@@ -2,3 +2,9 @@ name: VMoney
 main: org.kaivos.vmoney.VMoneyPlugin
 version: 1.0
 depend: [Vault]
+commands:
+ vmoney:
+  description: Configure VMoney
+  usage: /<command> save
+  permission: vmoney.all
+  permission-message: You don't have <permission>

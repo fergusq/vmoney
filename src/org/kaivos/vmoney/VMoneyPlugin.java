@@ -12,6 +12,8 @@ import net.milkbowl.vault.economy.Economy;
 
 import org.bukkit.Material;
 import org.bukkit.block.Sign;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -35,9 +37,9 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 		super.onEnable();
 		getServer().getPluginManager().registerEvents(this, this);
 		
-		kysyntä = lataa(this.getDataFolder().getAbsolutePath() + "/kys.dat");
-		tarjonta = lataa(this.getDataFolder().getAbsolutePath() + "/tarj.dat");
-		hinta = lataa(this.getDataFolder().getAbsolutePath() + "/hint.dat");
+		kysyntä = lataa("kys.dat");
+		tarjonta = lataa("tarj.dat");
+		hinta = lataa("hint.dat");
 		
 		setupEconomy();
 	}
@@ -46,9 +48,9 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 	public void onDisable() {
 		super.onDisable();
 		
-		tallenna(kysyntä, this.getDataFolder().getAbsolutePath() + "/kys.dat");
-		tallenna(tarjonta, this.getDataFolder().getAbsolutePath() + "/tarj.dat");
-		tallenna(hinta, this.getDataFolder().getAbsolutePath() + "/hint.dat");
+		tallenna(kysyntä, "kys.dat");
+		tallenna(tarjonta, "tarj.dat");
+		tallenna(hinta, "hint.dat");
 	}
 	
 	private boolean setupEconomy()
@@ -61,6 +63,27 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
         return (economy != null);
     }
 	
+	@Override
+	public boolean onCommand(CommandSender sender, Command command,
+			String label, String[] args) {
+		if (command.getName().equalsIgnoreCase("vmoney")) {
+			if (args.length != 1) return false;
+			switch (args[0]) {
+			case "save":
+				tallenna(kysyntä, "kys.dat");
+				tallenna(tarjonta, "tarj.dat");
+				tallenna(hinta, "hint.dat");
+				break;
+
+			default:
+				return false;
+			}
+		}
+		return false;
+	}
+	
+	private static final double VERO = 0.9;
+	
 	@SuppressWarnings("deprecation")
 	@EventHandler
 	public void kyltti(PlayerInteractEvent event) {
@@ -72,13 +95,13 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					|| event.getClickedBlock().getType() == Material.SIGN) {
 				Sign block = (Sign) event.getClickedBlock().getState();
 
-				if (!block.getLine(0).equalsIgnoreCase("[vbuy]") && !block.getLine(0).equalsIgnoreCase("[vsell]")) {
+				if (!block.getLine(0).equalsIgnoreCase("[vshop]")) {
 					return;
 				}
 				
 				String artikkeli = block.getLine(1);
 				
-				if (!artikkeli.matches("\\d*:(\\d*)?x\\d")) {
+				if (!artikkeli.matches("\\d*:(\\d*)?x(\\d*)")) {
 					player.sendMessage("§f[§bVMoney§f] §eBad format!");
 					return;
 				}
@@ -108,18 +131,15 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 				
 				NumberFormat nfFormat = NumberFormat.getInstance();
 				nfFormat.setMaximumFractionDigits(3);
+				nfFormat.setGroupingUsed(false);
 				
-				if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
-					block.setLine(2, ""+nfFormat.format(nykyinen));
-					block.setLine(3, "§" + (nykyinen < perushinta ? "c" : "a") + nfFormat.format(nykyinen/perushinta*100d-100d) + "%");
-					block.update();
-				}
-				else if (block.getLine(0).equalsIgnoreCase("[vbuy]") && economy.getBalance(player.getName()) > nykyinen) {
+				if (event.getAction() == Action.RIGHT_CLICK_BLOCK && economy.getBalance(player.getName()) > nykyinen) {
 					player.getInventory().addItem(esine);
 					player.updateInventory();
 					economy.withdrawPlayer(player.getName(), nykyinen);
 					
-					lisääKysyntää(artikkeli, 10);
+					lisääKysyntää(artikkeli, 1);
+					lisääTarjontaa(artikkeli, -1);
 					
 					double uusiHinta = perushinta*kerroin(artikkeli);
 					block.setLine(2, ""+nfFormat.format(uusiHinta));
@@ -128,22 +148,22 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					
 					player.sendMessage("§f[§bVMoney§f] §eItem bought: " + esine.toString() + " (" + nfFormat.format(nykyinen) +")!");
 				}
-				else if (block.getLine(0).equalsIgnoreCase("[vsell]") && player.getInventory().containsAtLeast(esine, esine.getAmount())) {
-					economy.depositPlayer(player.getName(), nykyinen/4);
+				else if (event.getAction() == Action.LEFT_CLICK_BLOCK && player.getInventory().containsAtLeast(esine, esine.getAmount())) {
+					economy.depositPlayer(player.getName(), nykyinen*VERO);
 					player.getInventory().removeItem(esine);
 					player.updateInventory();
 					
-					lisääTarjontaa(artikkeli, 10);
+					lisääTarjontaa(artikkeli, 1);
 					
 					double uusiHinta = perushinta*kerroin(artikkeli);
 					block.setLine(2, ""+nfFormat.format(uusiHinta));
 					block.setLine(3, "§" + (uusiHinta < perushinta ? "c" : "a") + nfFormat.format(uusiHinta/perushinta*100d-100d) + "%");
 					block.update();
 					
-					player.sendMessage("§f[§bVMoney§f] §eItem sold: " + esine.toString() + " (" + nfFormat.format(nykyinen/4) +")!");
+					player.sendMessage("§f[§bVMoney§f] §eItem sold: " + esine.toString() + " (" + nfFormat.format(nykyinen*VERO) +")!");
 				}
 				else {
-					block.setLine(2, ""+nykyinen);
+					block.setLine(2, ""+nfFormat.format(nykyinen));
 					block.setLine(3, "§" + (nykyinen < perushinta ? "c" : "a") + nfFormat.format(nykyinen/perushinta*100d-100d) + "%");
 					block.update();
 				}
@@ -161,7 +181,7 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 			if (event.getBlock().getType() == Material.WALL_SIGN
 					|| event.getBlock().getType() == Material.SIGN_POST
 					|| event.getBlock().getType() == Material.SIGN) {
-				if (!event.getLine(0).equalsIgnoreCase("[vbuy]") && !event.getLine(0).equalsIgnoreCase("[vsell]")) return;
+				if (!event.getLine(0).equalsIgnoreCase("[vshop]")) return;
 				
 				if (!player.hasPermission("vmoney.createsign")) {
 					player.sendMessage("§f[§bVMoney§f] §eYou lack permission!");
@@ -175,7 +195,12 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					return;
 				}
 				
-				double perushinta = Integer.parseInt(event.getLine(2));
+				double perushinta;
+				try {
+					perushinta = Double.parseDouble(event.getLine(2));
+				} catch (NumberFormatException ex) {
+					perushinta = hinta.get(artikkeli);
+				}
 				
 				hinta.put(artikkeli, perushinta);
 				kysyntä.put(artikkeli, 1d);
