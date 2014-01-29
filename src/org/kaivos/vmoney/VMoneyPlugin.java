@@ -190,7 +190,7 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 				
 				String artikkeli = event.getLine(1);
 				
-				if (!artikkeli.matches("\\d*:(\\d*)?x\\d")) {
+				if (!artikkeli.matches("\\d*:(\\d*)?x\\d*")) {
 					player.sendMessage("§f[§bVMoney§f] §eBad format!");
 					return;
 				}
