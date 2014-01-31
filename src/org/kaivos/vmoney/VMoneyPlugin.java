@@ -138,8 +138,8 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					player.updateInventory();
 					economy.withdrawPlayer(player.getName(), nykyinen);
 					
-					lisääKysyntää(artikkeli, 1);
-					lisääTarjontaa(artikkeli, -1);
+					lisääKysyntää(artikkeli, 0.1);
+					lisääTarjontaa(artikkeli, -0.1);
 					
 					double uusiHinta = perushinta*kerroin(artikkeli);
 					block.setLine(2, ""+nfFormat.format(uusiHinta));
@@ -153,7 +153,7 @@ public class VMoneyPlugin extends JavaPlugin implements Listener {
 					player.getInventory().removeItem(esine);
 					player.updateInventory();
 					
-					lisääTarjontaa(artikkeli, 1);
+					lisääTarjontaa(artikkeli, 0.1);
 					
 					double uusiHinta = perushinta*kerroin(artikkeli);
 					block.setLine(2, ""+nfFormat.format(uusiHinta));
